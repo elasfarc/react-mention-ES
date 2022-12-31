@@ -12,9 +12,9 @@
     "paths": {
       "*": ["node_modules/*"]
     },
-    "typeRoots": ["src/@types/*"]
+    "typeRoots": ["server/@types/*"]
   },
-  "include": ["src/**/*"],
+  "include": ["server/**/*"],
   "ts-node": {
     "files": true
   }
