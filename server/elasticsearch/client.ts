@@ -8,6 +8,8 @@ type ElasticConfig = {
   apiKey: string;
 };
 
+const IDX_NAME = "empcustomersdata";
+
 const elasticConfig: ElasticConfig = config.get("elastic");
 
 const client = new Client({
@@ -23,6 +25,21 @@ const client = new Client({
 client
   .ping()
   .then((res) => console.log("==> connected to ElasticSearch."))
+  .then(() => client.indices.exists({ index: IDX_NAME }))
+  .then((isExist) => {
+    console.log(`==> index is ${isExist ? "existed" : "not existed"} `);
+    if (!isExist)
+      return client.indices.create({
+        index: IDX_NAME,
+        mappings: {
+          properties: {
+            name: { type: "text" },
+            email: { enabled: false },
+            label: { enabled: false },
+          },
+        },
+      });
+  })
   .catch((err) => console.error(err));
 
 export default client;
