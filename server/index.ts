@@ -1,4 +1,5 @@
 import express from "express";
+import "./elasticsearch/client";
 
 const app = express();
 
