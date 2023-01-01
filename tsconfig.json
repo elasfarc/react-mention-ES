@@ -12,7 +12,7 @@
     "paths": {
       "*": ["node_modules/*"]
     },
-    "typeRoots": ["server/@types/*"]
+    "typeRoots": ["server/types/*"]
   },
   "include": ["server/**/*"],
   "ts-node": {

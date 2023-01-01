@@ -4,5 +4,8 @@
     "username": "elastic",
     "password": "uXBsjK5XUxy0MFC4Vn5dRpK6",
     "apiKey": "MHVhR1lvVUJ6Ni1nRGMzd1JCRkg6NlBiN0ZkU3JRa3FTLTc0NWU3b21LZw=="
+  },
+  "openai": {
+    "apiKey": "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"
   }
 }
