@@ -1,4 +1,4 @@
-type HookType = "start" | "cancel";
+type HookType = "start" | "cancel" | "typing";
 type Cursor = {
   height: number;
   top: number;
@@ -6,9 +6,26 @@ type Cursor = {
   selectionEnd: number;
   selectionStart: number;
 };
-type OnStartMeta = {
-  hookType: HookType;
+// type BaseMeta = {
+//   hookType: HookType;
+//   cursor: Cursor;
+// };
+
+// type TypeMeta = BaseMeta & { text: string };
+
+type BaseMeta = {
   cursor: Cursor;
 };
 
-export { OnStartMeta };
+type StartCancelMeta = BaseMeta & {
+  hookType: Extract<HookType, "start" | "cancel">;
+};
+
+type TypeMeta = BaseMeta & {
+  hookType: Extract<HookType, "typing">;
+  text: string;
+};
+
+type Meta = StartCancelMeta | TypeMeta;
+
+export { Meta };
