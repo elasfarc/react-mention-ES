@@ -7,7 +7,7 @@ type Cursor = {
   selectionStart: number;
 };
 type OnStartMeta = {
-  hookType: Extract<HookType, "start">;
+  hookType: HookType;
   cursor: Cursor;
 };
 
