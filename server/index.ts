@@ -1,7 +1,13 @@
 import express from "express";
-import "./elasticsearch/client";
+import cors from "cors";
+import "./elasticsearch/connect";
+import { searchRoutes } from "./router";
 
 const app = express();
+
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+app.use("/search", searchRoutes);
 
 const PORT = process.env.PORT || 5001;
 
