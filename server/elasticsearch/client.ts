@@ -1,14 +1,9 @@
 import { Client } from "@elastic/elasticsearch";
 import config from "config";
+import { generateRandomPeople } from "../openAi/client";
+import { ElasticConfig, Person } from "../types/api";
 
-type ElasticConfig = {
-  cloudID: string;
-  username: string;
-  password: string;
-  apiKey: string;
-};
-
-const IDX_NAME = "empcustomersdata";
+const IDX_NAME = "empcustomersdata0";
 
 const elasticConfig: ElasticConfig = config.get("elastic");
 
@@ -22,14 +17,21 @@ const client = new Client({
   },
 });
 
-client
-  .ping()
-  .then((res) => console.log("==> connected to ElasticSearch."))
-  .then(() => client.indices.exists({ index: IDX_NAME }))
-  .then((isExist) => {
+connectElastic();
+
+//****** */
+
+async function connectElastic() {
+  try {
+    await client.ping();
+    console.log("==> connected to ElasticSearch.");
+
+    const isExist = await client.indices.exists({ index: IDX_NAME });
     console.log(`==> index is ${isExist ? "existed" : "not existed"} `);
-    if (!isExist)
-      return client.indices.create({
+
+    if (!isExist) {
+      console.log(`==> creating index... `);
+      await client.indices.create({
         index: IDX_NAME,
         mappings: {
           properties: {
@@ -39,7 +41,31 @@ client
           },
         },
       });
-  })
-  .catch((err) => console.error(err));
+    }
+
+    const stats = await client.indices.stats({
+      index: IDX_NAME,
+      metric: "docs",
+    });
+    const docCount = stats._all.primaries?.docs?.count;
+    if (docCount == 0) {
+      console.log(`==> generating data...`);
+      const people = await generateRandomPeople();
+      console.log(`==> indexing...`);
+      await indexData(people!, client, IDX_NAME);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function indexData(data: Person[], client: Client, idxName: string) {
+  data.map(async (person) => {
+    await client.index({
+      index: idxName,
+      document: person,
+    });
+  });
+}
 
 export default client;
