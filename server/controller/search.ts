@@ -9,6 +9,7 @@ const getSearchResults: RequestHandler<{}, {}, {}, { q: string }> = async (
 
   const searchParam = {
     index: IDX_NAME,
+    size: 25,
     query: {
       wildcard: {
         name: {

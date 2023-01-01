@@ -1,6 +1,8 @@
 import React from "react";
 import InputTrigger from "react-input-trigger";
+import { ColorRing } from "react-loader-spinner";
 import { Meta } from "../types/react-input-trigger";
+import { Person, SearchResult } from "../types/api";
 
 function MentionArea() {
   const [state, setState] = React.useState({
@@ -10,9 +12,14 @@ function MentionArea() {
     text: "",
   });
 
-  const { left, top, isSuggestor, text } = state;
+  const [fetchState, setFetchState] = React.useState<{
+    loading: boolean;
+    data: Person[] | null;
+    error: Error | null;
+  }>({ loading: false, data: null, error: null });
 
-  const people = ["foo", "bar", "beta", "gama"];
+  const { left, top, isSuggestor, text } = state;
+  const { loading, data } = fetchState;
 
   function setSuggestor(meta: Meta) {
     const { hookType, cursor } = meta;
@@ -36,8 +43,26 @@ function MentionArea() {
 
   function handleTyping(meta: Meta) {
     if (meta.hookType === "typing")
-      setState({ isSuggestor, top, left, text: meta.text });
+      setState({ isSuggestor, top, left, text: meta.text.toLowerCase() });
   }
+
+  React.useEffect(() => {
+    if (isSuggestor) {
+      setFetchState({ loading: true, data: null, error: null });
+      fetch(`/search?q=${text}`)
+        .then((res) => res.json())
+        .then((hits: SearchResult[]) => {
+          console.log(hits);
+
+          setFetchState({
+            loading: false,
+            data: hits.map((hit) => ({ ...hit._source, id: hit._id })),
+            error: null,
+          });
+        })
+        .catch((error) => setFetchState({ data: null, loading: false, error }));
+    }
+  }, [isSuggestor, text]);
 
   return (
     <div
@@ -81,13 +106,28 @@ function MentionArea() {
             background: "white",
             boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
             display: isSuggestor ? "block" : "none",
+            maxHeight: "25vh",
+            overflowY: "scroll",
           }}
         >
-          {people.map((person, index) => (
-            <div key={index} style={{ padding: ".5rem 1rem" }}>
-              {person}
+          {loading ? (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <ColorRing
+                visible={true}
+                height="80"
+                width="80"
+                ariaLabel="blocks-loading"
+                colors={["#e15b64", "#f47e60", "#f8b26a", "#abbd81", "#849b87"]}
+              />
             </div>
-          ))}
+          ) : (
+            data &&
+            data.map(({ name, id }) => (
+              <div key={id} style={{ padding: ".5rem 1rem" }}>
+                {name}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
