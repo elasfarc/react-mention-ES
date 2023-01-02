@@ -230,7 +230,7 @@ function MentionArea() {
           ref={listRef}
           style={{
             position: "absolute",
-            top: top,
+            top: `calc(${top}px - 1.5em)`,
             left: left,
             width: "200px",
             borderRadius: "6px",
@@ -245,17 +245,19 @@ function MentionArea() {
             <Spinner />
           ) : (
             data &&
-            data.map(({ name, id }, index) => (
+            data.map(({ name, id, label }, index) => (
               <div
                 key={id}
                 style={{
                   padding: ".5rem 1rem",
+                  fontSize: ".7em",
                   background: index === currentSelection ? "#8989ff" : "",
                 }}
                 onMouseOver={() => handleMouseOver(index)}
                 onMouseUp={selectItem}
               >
                 {name}
+                <span> {`(${label})`}</span>
               </div>
             ))
           )}
