@@ -1,24 +1,19 @@
 import React from "react";
 import InputTrigger from "react-input-trigger";
-import { ColorRing } from "react-loader-spinner";
+import { Spinner, Highlighter } from "./index";
+import textIndexReducer from "../reducers/textIndexReducer";
 import { Meta } from "../types/react-input-trigger";
 import { Person, SearchResult } from "../types/api";
 
 function MentionArea() {
-  const [state, setState] = React.useState<{
-    left: number;
-    top: number;
-    isSuggestor: boolean;
-    text: string;
-    currentSelection: number;
-    scrollThrough: "mouse" | "keyboard" | null;
-  }>({
+  const [state, setState] = React.useState({
     left: 0,
     top: 0,
     isSuggestor: false,
-    text: "",
+    query: "",
     currentSelection: 0,
-    scrollThrough: null,
+    currentPotionalSelection: 0,
+    scrollThrough: null as "keyboard" | "mouse" | null,
   });
 
   const [fetchState, setFetchState] = React.useState<{
@@ -27,14 +22,22 @@ function MentionArea() {
     error: Error | null;
   }>({ loading: false, data: null, error: null });
 
-  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const [textIndex, setTextIndex] = React.useReducer(textIndexReducer, []);
 
-  const { left, top, isSuggestor, text, currentSelection, scrollThrough } =
+  const text = textIndex.reduce((acc, curr) => {
+    return acc + curr.content;
+  }, "");
+
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  let endTriggerHandler = React.useRef<Function | null>(null);
+
+  const { left, top, isSuggestor, query, currentSelection, scrollThrough } =
     state;
   const { loading, data } = fetchState;
 
   function setSuggestor(meta: Meta) {
     const { hookType, cursor } = meta;
+
     switch (hookType) {
       case "start":
         setState((state) => ({
@@ -42,17 +45,20 @@ function MentionArea() {
           isSuggestor: true,
           left: cursor.left,
           top: cursor.top + cursor.height,
+          currentPotionalSelection: cursor.selectionStart,
         }));
         break;
       case "cancel":
-        setState({
+        setState((state) => ({
+          ...state,
           isSuggestor: false,
           top: 0,
           left: 0,
-          text: "",
+          query: "",
           currentSelection: 0,
+          currentPotionalSelection: 0,
           scrollThrough: null,
-        });
+        }));
         break;
 
       default:
@@ -60,17 +66,57 @@ function MentionArea() {
     }
   }
 
-  function handleTyping(meta: Meta) {
+  function handleQueryInput(meta: Meta) {
     if (meta.hookType === "typing")
       setState((state) => ({
         ...state,
-        text: meta.text.toLowerCase(),
+        query: state.isSuggestor ? meta.text.toLowerCase() : "",
         currentSelection: state.currentSelection,
       }));
   }
 
+  const handleTextAreaKeyDown: React.KeyboardEventHandler<
+    HTMLTextAreaElement
+  > = (e) => {
+    const { code, key } = e;
+
+    if (key.length > 1)
+      if (code === "Backspace") return setTextIndex({ type: "delete" });
+      else return;
+
+    const keyCode = key.charCodeAt(0);
+
+    if (keyCode >= 32 && keyCode <= 126)
+      setTextIndex({ type: "add", payload: { content: key, label: "none" } });
+  };
+
+  const selectItem = () => {
+    if (data) {
+      setState((state) => ({
+        ...state,
+        currentPotionalSelection: 0,
+        isSuggestor: false,
+        left: 0,
+        top: 0,
+        query: "",
+      }));
+      setTextIndex({
+        type: "add",
+        payload: {
+          content: data[currentSelection].name,
+          label: data[currentSelection].label,
+        },
+      });
+      if (endTriggerHandler.current) endTriggerHandler.current();
+    }
+  };
+
   const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
     const { key } = e;
+    if (key === "Enter" && isSuggestor && data) {
+      e.preventDefault();
+      selectItem();
+    }
 
     if ((key === "ArrowDown" || key === "ArrowUp") && data) {
       e.preventDefault();
@@ -97,7 +143,7 @@ function MentionArea() {
   React.useEffect(() => {
     if (isSuggestor) {
       setFetchState({ loading: true, data: null, error: null });
-      fetch(`/search?q=${text}`)
+      fetch(`/search?q=${query}`)
         .then((res) => res.json())
         .then((hits: SearchResult[]) => {
           setFetchState({
@@ -108,7 +154,7 @@ function MentionArea() {
         })
         .catch((error) => setFetchState({ data: null, loading: false, error }));
     }
-  }, [isSuggestor, text]);
+  }, [isSuggestor, query]);
 
   React.useLayoutEffect(() => {
     if (listRef.current && scrollThrough === "keyboard" && data) {
@@ -130,19 +176,24 @@ function MentionArea() {
   return (
     <div
       style={{
-        display: "flex",
-        height: "100vh",
         width: "100vw",
         justifyContent: "center",
         alignItems: "center",
+        position: "relative",
       }}
     >
       <div
         style={{
-          position: "relative",
+          position: "absolute",
+          minHeight: "100px",
+          fontFamily: "sans-serif",
+          fontSize: "1.2em",
+          overflowWrap: "break-word",
+          whiteSpace: "pre-wrap",
         }}
         onKeyDown={handleKeyDown}
       >
+        <Highlighter paragraphes={textIndex} />
         <InputTrigger
           trigger={{
             keyCode: 50,
@@ -150,13 +201,28 @@ function MentionArea() {
           }}
           onStart={setSuggestor}
           onCancel={setSuggestor}
-          onType={handleTyping}
+          onType={handleQueryInput}
+          endTrigger={(endTrigger: () => void) => {
+            endTriggerHandler.current = endTrigger;
+          }}
         >
           <textarea
+            onKeyDown={handleTextAreaKeyDown}
+            value={text}
+            placeholder="Mention people using '@'"
             style={{
-              height: "100px",
+              height: "100%",
               width: "400px",
-              lineHeight: "1em",
+              lineHeight: "2em",
+              fontSize: "inherit",
+              fontFamily: "inherit",
+              resize: "none",
+              overflowWrap: "break-word",
+              whiteSpace: "pre-wrap",
+              overflow: "hidden",
+              position: "absolute",
+              top: 0,
+              left: 0,
             }}
           />
         </InputTrigger>
@@ -176,15 +242,7 @@ function MentionArea() {
           }}
         >
           {loading ? (
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <ColorRing
-                visible={true}
-                height="80"
-                width="80"
-                ariaLabel="blocks-loading"
-                colors={["#e15b64", "#f47e60", "#f8b26a", "#abbd81", "#849b87"]}
-              />
-            </div>
+            <Spinner />
           ) : (
             data &&
             data.map(({ name, id }, index) => (
@@ -195,6 +253,7 @@ function MentionArea() {
                   background: index === currentSelection ? "#8989ff" : "",
                 }}
                 onMouseOver={() => handleMouseOver(index)}
+                onMouseUp={selectItem}
               >
                 {name}
               </div>

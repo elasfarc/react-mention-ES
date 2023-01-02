@@ -12,4 +12,14 @@ type SearchResult = {
   _source: Omit<Person, "id">;
 };
 
-export { Person, SearchResult };
+type Text = {
+  content: string;
+  label: "employee" | "customer" | "none";
+};
+
+type TextIndexAction =
+  | { type: "add"; payload: Text }
+  | { type: "delete" }
+  | { type: "update"; payload: Text };
+
+export { Person, SearchResult, Text, TextIndexAction };
