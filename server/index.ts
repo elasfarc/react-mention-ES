@@ -9,6 +9,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use("/search", searchRoutes);
 
+app.get("*", () => {});
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => console.log(`server is listening on port ${PORT}`));
